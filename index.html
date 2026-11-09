@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Probability Tree Diagram Builder</title>
+    <style>
+        /* CSS Reset & Variables */
+        :root {
+            --bg-main: #f8fafc;
+            --surface-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --primary-color: #1e40af;
+            --primary-focus: #1d4ed8;
+            --border-color: #94a3b8;
+            --error-bg: #fef2f2;
+            --error-border: #ef4444;
+            --error-text: #991b1b;
+            --success-bg: #f0fdf4;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --highlight-bg: #fef08a;
+            --highlight-stroke: #ca8a04;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 1.25rem;
+        }
+
+        header, main, footer {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions-box {
+            background-color: #eff6ff;
+            border: 2px solid #bfdbfe;
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #1e3a8a;
+        }
+
+        .instructions-box h2 {
+            font-size: 1.15rem;
+            margin-bottom: 0.5rem;
+            color: #1e40af;
+        }
+
+        .instructions-box ul {
+            margin-left: 1.25rem;
+        }
+
+        /* Screen Reader Utility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Grid Layout */
+        .app-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .app-grid {
+                grid-template-columns: 420px 1fr;
+            }
+        }
+
+        /* Card Container */
+        .card {
+            background: var(--surface-card);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.35rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            font-size: 1.05rem;
+        }
+
+        .help-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        input:focus, select:focus, button:focus, [tabindex="0"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.6);
+            border-color: #0284c7;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.85rem 1.25rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-focus);
+        }
+
+        .btn-secondary {
+            background-color: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.9rem;
+            width: auto;
+        }
+
+        /* Node Editor Section */
+        .node-editor-list {
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .node-group {
+            background: #f1f5f9;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .node-group-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .branch-input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Validation Alert Boxes */
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+
+        .alert-error {
+            background-color: var(--error-bg);
+            border: 1px solid var(--error-border);
+            color: var(--error-text);
+        }
+
+        .alert-success {
+            background-color: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success-text);
+        }
+
+        /* Visualization Area */
+        .svg-container {
+            width: 100%;
+            overflow-x: auto;
+            background: #ffffff;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1rem;
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            min-width: 700px;
+            height: auto;
+            min-height: 520px;
+        }
+
+        /* SVG Elements */
+        .tree-line {
+            stroke: #64748b;
+            stroke-width: 3px;
+            transition: stroke 0.2s ease, stroke-width 0.2s ease;
+        }
+
+        .tree-line.highlighted {
+            stroke: #d97706;
+            stroke-width: 6px;
+        }
+
+        .tree-node {
+            fill: #3b82f6;
+            stroke: #1e40af;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+
+        .tree-node.highlighted {
+            fill: #f59e0b;
+            stroke: #b45309;
+            stroke-width: 4px;
+        }
+
+        .node-label {
+            font-size: 14px;
+            font-weight: 700;
+            fill: #0f172a;
+        }
+
+        .branch-prob-label {
+            font-size: 13px;
+            font-weight: 700;
+            fill: #2563eb;
+            background: white;
+        }
+
+        /* Outcome Paths Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f1f5f9;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+
+        tr.path-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        tr.path-row:hover, tr.path-row:focus {
+            background-color: #fef08a;
+            outline: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .badge-valid {
+            background-color: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success-border);
+        }
+
+        .badge-invalid {
+            background-color: var(--error-bg);
+            color: var(--error-text);
+            border: 1px solid var(--error-border);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Interactive Probability Tree Diagram Builder</h1>
+        <p>Define tree layers and branches, assign event names and conditional probabilities, and analyze outcome paths using the Multiplicative Rule of Probability.</p>
+    </header>
+
+    <main class="app-grid">
+        <!-- Instructions Banner -->
+        <div class="instructions-box" style="grid-column: 1 / -1;">
+            <h2>How to Use This Tool</h2>
+            <ul>
+                <li><strong>1. Set Up Tree Structure:</strong> Choose the number of layers (depth) and how many branches originate from each node, or select a preset example.</li>
+                <li><strong>2. Label Events & Probabilities:</strong> Edit event names and conditional probabilities for every node. Probabilities for branches leaving any single node <em>must sum to 1.0</em>. Use <strong>"Auto-Balance = 1.0"</strong> if needed.</li>
+                <li><strong>3. Explore Outcome Paths:</strong> Review the generated tree diagram and table of all end-to-end paths. Hover over or focus (`Tab`) on any row in the table to highlight that path in the diagram.</li>
+            </ul>
+        </div>
+
+        <!-- Controls Column -->
+        <section class="controls-column">
+            <!-- 1. Tree Structure Config Card -->
+            <div class="card" aria-labelledby="config-heading">
+                <h2 id="config-heading">1. Tree Diagram Structure</h2>
+                <form id="tree-config-form" onsubmit="handleConfigSubmit(event)">
+                    <div class="form-group">
+                        <label for="select-preset">Load Sample Preset</label>
+                        <select id="select-preset" onchange="loadPreset()">
+                            <option value="custom">-- Custom Structure --</option>
+                            <option value="coin">Two Coin Flips (Fair Coins)</option>
+                            <option value="marbles">Drawing 2 Marbles Without Replacement</option>
+                            <option value="medical">Medical Test Accuracy (3 Layers)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="num-layers">Number of Layers (Depth: 1 - 4)</label>
+                        <div class="help-text" id="layers-help">Determines how many successive steps or events occur in sequence.</div>
+                        <input type="number" id="num-layers" min="1" max="4" value="2" aria-describedby="layers-help" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="num-branches">Branches Per Node (2 - 4)</label>
+                        <div class="help-text" id="branches-help">Number of possible outcomes coming from every node at each layer.</div>
+                        <input type="number" id="num-branches" min="2" max="4" value="2" aria-describedby="branches-help" required>
+                    </div>
+
+                    <button type="submit" class="btn">Generate / Reset Tree Structure</button>
+                </form>
+            </div>
+
+            <!-- 2. Branch Event & Probability Editor Card -->
+            <div class="card" aria-labelledby="editor-heading">
+                <h2 id="editor-heading">2. Edit Events & Probabilities</h2>
+                <p class="help-text">Enter branch event names and probabilities. The probabilities originating from each parent node <strong>must sum to 1.0</strong>.</p>
+                
+                <div id="node-editor-container" class="node-editor-list">
+                    <!-- Dynamic form inputs for each node's branches generated here -->
+                </div>
+
+                <div id="validation-summary" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- Visualization & Results Column -->
+        <section class="visual-column">
+            <!-- SVG Diagram Card -->
+            <div class="card" aria-labelledby="visual-heading">
+                <h2 id="visual-heading">
+                    <span>3. Visual Tree Diagram</span>
+                </h2>
+                <div class="svg-container">
+                    <svg id="tree-svg" viewBox="0 0 950 580" role="img" aria-label="Interactive Tree Diagram Visualizer">
+                        <title>Probability Tree Diagram</title>
+                        <desc>Visualization of sequential event branches showing probabilities and outcome paths.</desc>
+                        <!-- Dynamic SVG Lines, Circles, Text rendered via JS -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Path Analysis Table Card -->
+            <div class="card" aria-labelledby="table-heading">
+                <h2 id="table-heading">4. All Outcome Paths & Joint Probabilities</h2>
+                <p class="help-text">Hover or focus with keyboard over any path row to highlight the corresponding route in the tree diagram above.</p>
+                
+                <div class="table-responsive">
+                    <table id="paths-table" aria-describedby="table-heading">
+                        <thead>
+                            <tr>
+                                <th scope="col">Path #</th>
+                                <th scope="col">Event Sequence</th>
+                                <th scope="col">Probability Calculation</th>
+                                <th scope="col">Joint Probability P(Path)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paths-table-body">
+                            <!-- Dynamically generated rows -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" style="text-align: right;">Total Sum of All Path Probabilities:</th>
+                                <th id="total-prob-cell">1.0000</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer style="margin-top: 2rem; text-align: center; color: var(--text-muted); font-size: 0.95rem;">
+        <p>Built for Introductory Statistics Students &bull; Accessible Static Web Application</p>
+    </footer>
+
+    <script>
+        // Global State Model
+        let treeData = {
+            layers: 2,
+            branchesPerNode: 2,
+            nodes: {} // Map of nodeId -> Array of Branch objects: { label, prob }
+        };
+
+        let highlightedPath = null;
+
+        // Presets
+        const PRESETS = {
+            coin: {
+                layers: 2,
+                branches: 2,
+                data: {
+                    "root": [
+                        { label: "Heads (H1)", prob: 0.5 },
+                        { label: "Tails (T1)", prob: 0.5 }
+                    ],
+                    "node_0_0": [
+                        { label: "Heads (H2)", prob: 0.5 },
+                        { label: "Tails (T2)", prob: 0.5 }
+                    ],
+                    "node_0_1": [
+                        { label: "Heads (H2)", prob: 0.5 },
+                        { label: "Tails (T2)", prob: 0.5 }
+                    ]
+                }
+            },
+            marbles: {
+                layers: 2,
+                branches: 2,
+                data: {
+                    "root": [
+                        { label: "Red (R1)", prob: 0.6 },
+                        { label: "Blue (B1)", prob: 0.4 }
+                    ],
+                    "node_0_0": [
+                        { label: "Red (R2)", prob: 0.4286 },
+                        { label: "Blue (B2)", prob: 0.5714 }
+                    ],
+                    "node_0_1": [
+                        { label: "Red (R2)", prob: 0.5714 },
+                        { label: "Blue (B2)", prob: 0.4286 }
+                    ]
+                }
+            },
+            medical: {
+                layers: 3,
+                branches: 2,
+                data: {
+                    "root": [
+                        { label: "Disease (D)", prob: 0.02 },
+                        { label: "No Disease (D')", prob: 0.98 }
+                    ],
+                    "node_0_0": [
+                        { label: "Test Positive (+)", prob: 0.95 },
+                        { label: "Test Negative (-)", prob: 0.05 }
+                    ],
+                    "node_0_1": [
+                        { label: "Test Positive (+)", prob: 0.03 },
+                        { label: "Test Negative (-)", prob: 0.97 }
+                    ],
+                    "node_1_0": [
+                        { label: "Confirmed", prob: 0.9 },
+                        { label: "Unconfirmed", prob: 0.1 }
+                    ],
+                    "node_1_1": [
+                        { label: "Re-test", prob: 0.5 },
+                        { label: "Cleared", prob: 0.5 }
+                    ],
+                    "node_1_2": [
+                        { label: "Re-test", prob: 0.1 },
+                        { label: "Cleared", prob: 0.9 }
+                    ],
+                    "node_1_3": [
+                        { label: "Confirmed", prob: 0.01 },
+                        { label: "Cleared", prob: 0.99 }
+                    ]
+                }
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            buildTreeData(2, 2);
+            renderAll();
+        });
+
+        function handleConfigSubmit(e) {
+            e.preventDefault();
+            const layers = parseInt(document.getElementById('num-layers').value, 10);
+            const branches = parseInt(document.getElementById('num-branches').value, 10);
+            document.getElementById('select-preset').value = 'custom';
+            buildTreeData(layers, branches);
+            renderAll();
+        }
+
+        function loadPreset() {
+            const val = document.getElementById('select-preset').value;
+            if (val !== 'custom' && PRESETS[val]) {
+                const p = PRESETS[val];
+                document.getElementById('num-layers').value = p.layers;
+                document.getElementById('num-branches').value = p.branches;
+                
+                treeData.layers = p.layers;
+                treeData.branchesPerNode = p.branches;
+                treeData.nodes = JSON.parse(JSON.stringify(p.data));
+
+                renderAll();
+            }
+        }
+
+        function buildTreeData(layers, branchesPerNode) {
+            treeData.layers = layers;
+            treeData.branchesPerNode = branchesPerNode;
+            treeData.nodes = {};
+
+            const defaultProb = parseFloat((1 / branchesPerNode).toFixed(4));
+            
+            function createBranches(prefix, layerIndex) {
+                const branchArr = [];
+                let sum = 0;
+                for (let i = 0; i < branchesPerNode; i++) {
+                    let prob = defaultProb;
+                    if (i === branchesPerNode - 1) prob = parseFloat((1 - sum).toFixed(4));
+                    sum += prob;
+                    branchArr.push({
+                        label: `Event ${String.fromCharCode(65 + i)}${layerIndex + 1}`,
+                        prob: prob
+                    });
+                }
+                return branchArr;
+            }
+
+            // Root Node
+            treeData.nodes["root"] = createBranches("root", 0);
+
+            // Child Nodes
+            let currentParentCount = 1;
+            for (let l = 0; l < layers - 1; l++) {
+                const nextParentCount = currentParentCount * branchesPerNode;
+                for (let p = 0; p < nextParentCount; p++) {
+                    const nodeId = `node_${l}_${p}`;
+                    treeData.nodes[nodeId] = createBranches(nodeId, l + 1);
+                }
+                currentParentCount = nextParentCount;
+            }
+        }
+
+        function renderAll() {
+            renderEditorForm();
+            validateProbabilities();
+            renderSVGTree();
+            renderPathTable();
+        }
+
+        function renderEditorForm() {
+            const container = document.getElementById('node-editor-container');
+            container.innerHTML = '';
+
+            const nodeKeys = Object.keys(treeData.nodes);
+
+            nodeKeys.forEach((nodeId) => {
+                const group = document.createElement('div');
+                group.className = 'node-group';
+                
+                let titleText = nodeId === 'root' ? 'Root Node (Layer 1)' : `Node ${nodeId.replace('node_', 'Layer ')}`;
+                
+                let html = `
+                    <div class="node-group-title">
+                        <span>${titleText}</span>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="normalizeNode('${nodeId}')">Auto-Balance = 1.0</button>
+                    </div>
+                `;
+
+                const branches = treeData.nodes[nodeId];
+                branches.forEach((b, bIdx) => {
+                    html += `
+                        <div class="branch-input-row">
+                            <div>
+                                <label for="label_${nodeId}_${bIdx}">Branch ${bIdx+1} Event</label>
+                                <input type="text" id="label_${nodeId}_${bIdx}" value="${b.label}" placeholder="Event Label" oninput="updateBranchData('${nodeId}', ${bIdx}, 'label', this.value)">
+                            </div>
+                            <div>
+                                <label for="prob_${nodeId}_${bIdx}">Branch ${bIdx+1} Prob.</label>
+                                <input type="number" id="prob_${nodeId}_${bIdx}" value="${b.prob}" step="0.01" min="0" max="1" placeholder="Prob (0-1)" oninput="updateBranchData('${nodeId}', ${bIdx}, 'prob', this.value)">
+                            </div>
+                        </div>
+                    `;
+                });
+
+                group.innerHTML = html;
+                container.appendChild(group);
+            });
+        }
+
+        function updateBranchData(nodeId, branchIdx, key, val) {
+            if (key === 'prob') {
+                treeData.nodes[nodeId][branchIdx].prob = parseFloat(val) || 0;
+            } else {
+                treeData.nodes[nodeId][branchIdx].label = val;
+            }
+            validateProbabilities();
+            renderSVGTree();
+            renderPathTable();
+        }
+
+        function normalizeNode(nodeId) {
+            const branches = treeData.nodes[nodeId];
+            if (!branches || branches.length === 0) return;
+            const equalShare = parseFloat((1 / branches.length).toFixed(4));
+            let sum = 0;
+            branches.forEach((b, i) => {
+                if (i === branches.length - 1) {
+                    b.prob = parseFloat((1 - sum).toFixed(4));
+                } else {
+                    b.prob = equalShare;
+                    sum += equalShare;
+                }
+            });
+            renderAll();
+        }
+
+        function validateProbabilities() {
+            const summaryContainer = document.getElementById('validation-summary');
+            let errors = [];
+
+            Object.keys(treeData.nodes).forEach(nodeId => {
+                const branches = treeData.nodes[nodeId];
+                const sum = branches.reduce((acc, b) => acc + (parseFloat(b.prob) || 0), 0);
+                if (Math.abs(sum - 1.0) > 0.001) {
+                    let name = nodeId === 'root' ? 'Root Node' : nodeId;
+                    errors.push(`${name} probabilities sum to ${sum.toFixed(4)} (must equal 1.0)`);
+                }
+            });
+
+            if (errors.length > 0) {
+                summaryContainer.innerHTML = `
+                    <div class="alert alert-error" role="alert">
+                        <strong>Probability Warning:</strong>
+                        <ul style="margin-left: 1.25rem; margin-top: 0.25rem;">
+                            ${errors.map(e => `<li>${e}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                summaryContainer.innerHTML = `
+                    <div class="alert alert-success" role="status">
+                        ✓ All node branch probabilities sum to 1.0000.
+                    </div>
+                `;
+            }
+        }
+
+        function renderSVGTree() {
+            const svg = document.getElementById('tree-svg');
+            svg.innerHTML = `
+                <title>Probability Tree Diagram</title>
+                <desc>Visualization of sequential event branches showing probabilities and outcome paths.</desc>
+            `;
+
+            const width = 950;
+            const height = 580;
+            const layers = treeData.layers;
+            const layerWidth = (width - 160) / layers;
+
+            const renderElements = [];
+
+            function layoutNode(nodeId, depth, startY, endY, parentX, parentY, currentPath = []) {
+                const branches = treeData.nodes[nodeId];
+                if (!branches) return;
+
+                const x = parentX + layerWidth;
+                const totalY = endY - startY;
+                const stepY = totalY / branches.length;
+
+                branches.forEach((b, i) => {
+                    const y = startY + (stepY * i) + (stepY / 2);
+                    const newPath = [...currentPath, { nodeId, branchIdx: i, label: b.label, prob: b.prob }];
+                    
+                    renderElements.push({
+                        fromX: parentX,
+                        fromY: parentY,
+                        toX: x,
+                        toY: y,
+                        label: b.label,
+                        prob: b.prob,
+                        nodeId: nodeId,
+                        branchIdx: i,
+                        path: newPath
+                    });
+
+                    // Child Node Key Index Calculation
+                    let childIndex = 0;
+                    newPath.forEach((step, idx) => {
+                        if (idx > 0) {
+                            childIndex = childIndex * treeData.branchesPerNode + step.branchIdx;
+                        } else {
+                            childIndex = step.branchIdx;
+                        }
+                    });
+
+                    const childNodeId = `node_${depth}_${childIndex}`;
+                    if (depth < layers - 1 && treeData.nodes[childNodeId]) {
+                        layoutNode(childNodeId, depth + 1, startY + (stepY * i), startY + (stepY * (i + 1)), x, y, newPath);
+                    }
+                });
+            }
+
+            const rootX = 70;
+            const rootY = height / 2;
+            layoutNode("root", 0, 40, height - 40, rootX, rootY, []);
+
+            // Draw Root Circle
+            const rootNode = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            rootNode.setAttribute("cx", rootX);
+            rootNode.setAttribute("cy", rootY);
+            rootNode.setAttribute("r", 12);
+            rootNode.setAttribute("class", "tree-node");
+            svg.appendChild(rootNode);
+
+            // Draw Lines, Text & End Circles
+            renderElements.forEach((item) => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", item.fromX);
+                line.setAttribute("y1", item.fromY);
+                line.setAttribute("x2", item.toX);
+                line.setAttribute("y2", item.toY);
+                line.setAttribute("class", "tree-line");
+                
+                if (isBranchInHighlightedPath(item.nodeId, item.branchIdx, item.path)) {
+                    line.classList.add('highlighted');
+                }
+                svg.appendChild(line);
+
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", item.toX);
+                circle.setAttribute("cy", item.toY);
+                circle.setAttribute("r", 9);
+                circle.setAttribute("class", "tree-node");
+                if (isBranchInHighlightedPath(item.nodeId, item.branchIdx, item.path)) {
+                    circle.classList.add('highlighted');
+                }
+                svg.appendChild(circle);
+
+                const midX = (item.fromX + item.toX) / 2;
+                const midY = (item.fromY + item.toY) / 2;
+
+                const labelText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                labelText.setAttribute("x", midX);
+                labelText.setAttribute("y", midY - 8);
+                labelText.setAttribute("text-anchor", "middle");
+                labelText.setAttribute("class", "node-label");
+                labelText.textContent = item.label;
+                svg.appendChild(labelText);
+
+                const probText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                probText.setAttribute("x", midX);
+                probText.setAttribute("y", midY + 16);
+                probText.setAttribute("text-anchor", "middle");
+                probText.setAttribute("class", "branch-prob-label");
+                probText.textContent = `P = ${item.prob}`;
+                svg.appendChild(probText);
+            });
+        }
+
+        function isBranchInHighlightedPath(nodeId, branchIdx, itemPath) {
+            if (!highlightedPath) return false;
+            if (highlightedPath.length < itemPath.length) return false;
+            for (let i = 0; i < itemPath.length; i++) {
+                if (highlightedPath[i].nodeId !== itemPath[i].nodeId || highlightedPath[i].branchIdx !== itemPath[i].branchIdx) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function getAllPaths() {
+            const allPaths = [];
+
+            function traverse(nodeId, currentPath) {
+                const branches = treeData.nodes[nodeId];
+                if (!branches) return;
+
+                branches.forEach((b, idx) => {
+                    const nextPath = [...currentPath, { nodeId, branchIdx: idx, label: b.label, prob: parseFloat(b.prob) || 0 }];
+                    
+                    if (nextPath.length === treeData.layers) {
+                        allPaths.push(nextPath);
+                    } else {
+                        // Calculate child node key
+                        let childIndex = 0;
+                        nextPath.forEach((step, sIdx) => {
+                            if (sIdx > 0) {
+                                childIndex = childIndex * treeData.branchesPerNode + step.branchIdx;
+                            } else {
+                                childIndex = step.branchIdx;
+                            }
+                        });
+
+                        const childNodeId = `node_${nextPath.length - 1}_${childIndex}`;
+                        if (treeData.nodes[childNodeId]) {
+                            traverse(childNodeId, nextPath);
+                        }
+                    }
+                });
+            }
+
+            traverse("root", []);
+            return allPaths;
+        }
+
+        function renderPathTable() {
+            const tbody = document.getElementById('paths-table-body');
+            tbody.innerHTML = '';
+
+            const paths = getAllPaths();
+            let totalSum = 0;
+
+            paths.forEach((path, idx) => {
+                const jointProb = path.reduce((acc, step) => acc * step.prob, 1);
+                totalSum += jointProb;
+
+                const pathSequenceStr = path.map(s => s.label).join(' → ');
+                const calculationStr = path.map(s => s.prob).join(' × ');
+
+                const tr = document.createElement('tr');
+                tr.className = 'path-row';
+                tr.setAttribute('tabindex', '0');
+                tr.setAttribute('role', 'button');
+                tr.setAttribute('aria-label', `Path ${idx + 1}: ${pathSequenceStr}, Joint Probability ${jointProb.toFixed(4)}`);
+
+                tr.addEventListener('mouseenter', () => highlightPath(path));
+                tr.addEventListener('mouseleave', () => clearPathHighlight());
+                tr.addEventListener('focus', () => highlightPath(path));
+                tr.addEventListener('blur', () => clearPathHighlight());
+
+                tr.innerHTML = `
+                    <td><strong>Path ${idx + 1}</strong></td>
+                    <td>${pathSequenceStr}</td>
+                    <td><code>${calculationStr}</code></td>
+                    <td><strong>${jointProb.toFixed(4)}</strong></td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+
+            const totalCell = document.getElementById('total-prob-cell');
+            totalCell.textContent = totalSum.toFixed(4);
+            if (Math.abs(totalSum - 1.0) < 0.001) {
+                totalCell.className = "badge badge-valid";
+            } else {
+                totalCell.className = "badge badge-invalid";
+            }
+        }
+
+        function highlightPath(path) {
+            highlightedPath = path;
+            renderSVGTree();
+        }
+
+        function clearPathHighlight() {
+            highlightedPath = null;
+            renderSVGTree();
+        }
+    </script>
+</body>
+</html>
