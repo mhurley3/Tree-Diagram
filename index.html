@@ -401,7 +401,7 @@
             <!-- 2. Branch Event & Probability Editor Card -->
             <div class="card" aria-labelledby="editor-heading">
                 <h2 id="editor-heading">2. Edit Events & Probabilities</h2>
-                <p class="help-text">Enter branch event names and probabilities. The probabilities originating from each parent node <strong>must sum to 1.0</strong>.</p>
+                <p class="help-text">Enter branch event names and probabilities (e.g. <strong>0.5</strong> or <strong>1/2</strong>). The probabilities originating from each parent node <strong>must sum to 1.0</strong>.</p>
                 
                 <div id="node-editor-container" class="node-editor-list">
                     <!-- Dynamic form inputs for each node's branches generated here -->
@@ -466,7 +466,7 @@
         let treeData = {
             layers: 2,
             branchesPerNode: 2,
-            nodes: {} // Map of nodeId -> Array of Branch objects: { label, prob }
+            nodes: {} // Map of nodeId -> Array of Branch objects: { label, probInput, probValue }
         };
 
         let highlightedPath = null;
@@ -478,16 +478,16 @@
                 branches: 2,
                 data: {
                     "root": [
-                        { label: "Heads (H1)", prob: 0.5 },
-                        { label: "Tails (T1)", prob: 0.5 }
+                        { label: "Heads (H1)", probInput: "1/2" },
+                        { label: "Tails (T1)", probInput: "1/2" }
                     ],
                     "node_0_0": [
-                        { label: "Heads (H2)", prob: 0.5 },
-                        { label: "Tails (T2)", prob: 0.5 }
+                        { label: "Heads (H2)", probInput: "1/2" },
+                        { label: "Tails (T2)", probInput: "1/2" }
                     ],
                     "node_0_1": [
-                        { label: "Heads (H2)", prob: 0.5 },
-                        { label: "Tails (T2)", prob: 0.5 }
+                        { label: "Heads (H2)", probInput: "1/2" },
+                        { label: "Tails (T2)", probInput: "1/2" }
                     ]
                 }
             },
@@ -496,16 +496,16 @@
                 branches: 2,
                 data: {
                     "root": [
-                        { label: "Red (R1)", prob: 0.6 },
-                        { label: "Blue (B1)", prob: 0.4 }
+                        { label: "Red (R1)", probInput: "3/5" },
+                        { label: "Blue (B1)", probInput: "2/5" }
                     ],
                     "node_0_0": [
-                        { label: "Red (R2)", prob: 0.4286 },
-                        { label: "Blue (B2)", prob: 0.5714 }
+                        { label: "Red (R2)", probInput: "2/4" },
+                        { label: "Blue (B2)", probInput: "2/4" }
                     ],
                     "node_0_1": [
-                        { label: "Red (R2)", prob: 0.5714 },
-                        { label: "Blue (B2)", prob: 0.4286 }
+                        { label: "Red (R2)", probInput: "3/4" },
+                        { label: "Blue (B2)", probInput: "1/4" }
                     ]
                 }
             },
@@ -514,36 +514,59 @@
                 branches: 2,
                 data: {
                     "root": [
-                        { label: "Disease (D)", prob: 0.02 },
-                        { label: "No Disease (D')", prob: 0.98 }
+                        { label: "Disease (D)", probInput: "0.02" },
+                        { label: "No Disease (D')", probInput: "0.98" }
                     ],
                     "node_0_0": [
-                        { label: "Test Positive (+)", prob: 0.95 },
-                        { label: "Test Negative (-)", prob: 0.05 }
+                        { label: "Test Positive (+)", probInput: "0.95" },
+                        { label: "Test Negative (-)", probInput: "0.05" }
                     ],
                     "node_0_1": [
-                        { label: "Test Positive (+)", prob: 0.03 },
-                        { label: "Test Negative (-)", prob: 0.97 }
+                        { label: "Test Positive (+)", probInput: "0.03" },
+                        { label: "Test Negative (-)", probInput: "0.97" }
                     ],
                     "node_1_0": [
-                        { label: "Confirmed", prob: 0.9 },
-                        { label: "Unconfirmed", prob: 0.1 }
+                        { label: "Confirmed", probInput: "9/10" },
+                        { label: "Unconfirmed", probInput: "1/10" }
                     ],
                     "node_1_1": [
-                        { label: "Re-test", prob: 0.5 },
-                        { label: "Cleared", prob: 0.5 }
+                        { label: "Re-test", probInput: "1/2" },
+                        { label: "Cleared", probInput: "1/2" }
                     ],
                     "node_1_2": [
-                        { label: "Re-test", prob: 0.1 },
-                        { label: "Cleared", prob: 0.9 }
+                        { label: "Re-test", probInput: "1/10" },
+                        { label: "Cleared", probInput: "9/10" }
                     ],
                     "node_1_3": [
-                        { label: "Confirmed", prob: 0.01 },
-                        { label: "Cleared", prob: 0.99 }
+                        { label: "Confirmed", probInput: "0.01" },
+                        { label: "Cleared", probInput: "0.99" }
                     ]
                 }
             }
         };
+
+        // Utility: Parse Fraction or Decimal strings
+        function parseProbability(input) {
+            if (typeof input === 'number') return { numeric: input, valid: !isNaN(input) && input >= 0 && input <= 1 };
+            if (!input || typeof input !== 'string') return { numeric: 0, valid: false };
+            
+            const trimmed = input.trim();
+            if (trimmed.includes('/')) {
+                const parts = trimmed.split('/');
+                if (parts.length === 2) {
+                    const num = parseFloat(parts[0]);
+                    const den = parseFloat(parts[1]);
+                    if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                        const val = num / den;
+                        return { numeric: val, valid: val >= 0 && val <= 1 };
+                    }
+                }
+                return { numeric: 0, valid: false };
+            }
+            
+            const val = parseFloat(trimmed);
+            return { numeric: val, valid: !isNaN(val) && val >= 0 && val <= 1 };
+        }
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', () => {
@@ -580,18 +603,12 @@
             treeData.branchesPerNode = branchesPerNode;
             treeData.nodes = {};
 
-            const defaultProb = parseFloat((1 / branchesPerNode).toFixed(4));
-            
             function createBranches(prefix, layerIndex) {
                 const branchArr = [];
-                let sum = 0;
                 for (let i = 0; i < branchesPerNode; i++) {
-                    let prob = defaultProb;
-                    if (i === branchesPerNode - 1) prob = parseFloat((1 - sum).toFixed(4));
-                    sum += prob;
                     branchArr.push({
                         label: `Event ${String.fromCharCode(65 + i)}${layerIndex + 1}`,
-                        prob: prob
+                        probInput: `1/${branchesPerNode}`
                     });
                 }
                 return branchArr;
@@ -640,6 +657,9 @@
 
                 const branches = treeData.nodes[nodeId];
                 branches.forEach((b, bIdx) => {
+                    const parsed = parseProbability(b.probInput);
+                    const invalidClass = !parsed.valid ? 'style="border-color: var(--error-border);"' : '';
+
                     html += `
                         <div class="branch-input-row">
                             <div>
@@ -647,8 +667,8 @@
                                 <input type="text" id="label_${nodeId}_${bIdx}" value="${b.label}" placeholder="Event Label" oninput="updateBranchData('${nodeId}', ${bIdx}, 'label', this.value)">
                             </div>
                             <div>
-                                <label for="prob_${nodeId}_${bIdx}">Branch ${bIdx+1} Prob.</label>
-                                <input type="number" id="prob_${nodeId}_${bIdx}" value="${b.prob}" step="0.01" min="0" max="1" placeholder="Prob (0-1)" oninput="updateBranchData('${nodeId}', ${bIdx}, 'prob', this.value)">
+                                <label for="prob_${nodeId}_${bIdx}">Branch ${bIdx+1} Prob (Fraction / Dec)</label>
+                                <input type="text" id="prob_${nodeId}_${bIdx}" ${invalidClass} value="${b.probInput}" placeholder="e.g. 1/2 or 0.5" oninput="updateBranchData('${nodeId}', ${bIdx}, 'probInput', this.value)">
                             </div>
                         </div>
                     `;
@@ -660,11 +680,7 @@
         }
 
         function updateBranchData(nodeId, branchIdx, key, val) {
-            if (key === 'prob') {
-                treeData.nodes[nodeId][branchIdx].prob = parseFloat(val) || 0;
-            } else {
-                treeData.nodes[nodeId][branchIdx].label = val;
-            }
+            treeData.nodes[nodeId][branchIdx][key] = val;
             validateProbabilities();
             renderSVGTree();
             renderPathTable();
@@ -673,15 +689,8 @@
         function normalizeNode(nodeId) {
             const branches = treeData.nodes[nodeId];
             if (!branches || branches.length === 0) return;
-            const equalShare = parseFloat((1 / branches.length).toFixed(4));
-            let sum = 0;
-            branches.forEach((b, i) => {
-                if (i === branches.length - 1) {
-                    b.prob = parseFloat((1 - sum).toFixed(4));
-                } else {
-                    b.prob = equalShare;
-                    sum += equalShare;
-                }
+            branches.forEach((b) => {
+                b.probInput = `1/${branches.length}`;
             });
             renderAll();
         }
@@ -692,9 +701,23 @@
 
             Object.keys(treeData.nodes).forEach(nodeId => {
                 const branches = treeData.nodes[nodeId];
-                const sum = branches.reduce((acc, b) => acc + (parseFloat(b.prob) || 0), 0);
-                if (Math.abs(sum - 1.0) > 0.001) {
-                    let name = nodeId === 'root' ? 'Root Node' : nodeId;
+                let sum = 0;
+                let hasInvalidFormat = false;
+
+                branches.forEach(b => {
+                    const parsed = parseProbability(b.probInput);
+                    if (!parsed.valid) {
+                        hasInvalidFormat = true;
+                    } else {
+                        sum += parsed.numeric;
+                    }
+                });
+
+                let name = nodeId === 'root' ? 'Root Node' : nodeId;
+
+                if (hasInvalidFormat) {
+                    errors.push(`${name} contains an invalid fraction or decimal probability.`);
+                } else if (Math.abs(sum - 1.0) > 0.001) {
                     errors.push(`${name} probabilities sum to ${sum.toFixed(4)} (must equal 1.0)`);
                 }
             });
@@ -702,7 +725,7 @@
             if (errors.length > 0) {
                 summaryContainer.innerHTML = `
                     <div class="alert alert-error" role="alert">
-                        <strong>Probability Warning:</strong>
+                        <strong>Probability Validation Issue:</strong>
                         <ul style="margin-left: 1.25rem; margin-top: 0.25rem;">
                             ${errors.map(e => `<li>${e}</li>`).join('')}
                         </ul>
@@ -741,7 +764,8 @@
 
                 branches.forEach((b, i) => {
                     const y = startY + (stepY * i) + (stepY / 2);
-                    const newPath = [...currentPath, { nodeId, branchIdx: i, label: b.label, prob: b.prob }];
+                    const parsed = parseProbability(b.probInput);
+                    const newPath = [...currentPath, { nodeId, branchIdx: i, label: b.label, probInput: b.probInput, probVal: parsed.numeric }];
                     
                     renderElements.push({
                         fromX: parentX,
@@ -749,7 +773,7 @@
                         toX: x,
                         toY: y,
                         label: b.label,
-                        prob: b.prob,
+                        probInput: b.probInput,
                         nodeId: nodeId,
                         branchIdx: i,
                         path: newPath
@@ -824,7 +848,7 @@
                 probText.setAttribute("y", midY + 16);
                 probText.setAttribute("text-anchor", "middle");
                 probText.setAttribute("class", "branch-prob-label");
-                probText.textContent = `P = ${item.prob}`;
+                probText.textContent = `P = ${item.probInput}`;
                 svg.appendChild(probText);
             });
         }
@@ -848,12 +872,12 @@
                 if (!branches) return;
 
                 branches.forEach((b, idx) => {
-                    const nextPath = [...currentPath, { nodeId, branchIdx: idx, label: b.label, prob: parseFloat(b.prob) || 0 }];
+                    const parsed = parseProbability(b.probInput);
+                    const nextPath = [...currentPath, { nodeId, branchIdx: idx, label: b.label, probInput: b.probInput, probVal: parsed.numeric }];
                     
                     if (nextPath.length === treeData.layers) {
                         allPaths.push(nextPath);
                     } else {
-                        // Calculate child node key
                         let childIndex = 0;
                         nextPath.forEach((step, sIdx) => {
                             if (sIdx > 0) {
@@ -883,11 +907,11 @@
             let totalSum = 0;
 
             paths.forEach((path, idx) => {
-                const jointProb = path.reduce((acc, step) => acc * step.prob, 1);
+                const jointProb = path.reduce((acc, step) => acc * step.probVal, 1);
                 totalSum += jointProb;
 
                 const pathSequenceStr = path.map(s => s.label).join(' → ');
-                const calculationStr = path.map(s => s.prob).join(' × ');
+                const calculationStr = path.map(s => s.probInput).join(' × ');
 
                 const tr = document.createElement('tr');
                 tr.className = 'path-row';
